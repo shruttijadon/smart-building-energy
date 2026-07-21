@@ -1,29 +1,30 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
-# Page Configuration
+# Page ka setup aur title wagera yahan set kar rahe hain
 st.set_page_config(
     page_title="Smart Building Energy Profiling",
     page_icon="⚡",
     layout="wide"
 )
 
-# App Title & Overview 
+# App ka main header aur chota sa introduction
 st.title("⚡ Smart Building Energy Profiling & Analytics")
 st.markdown("""
-This web application provides real-time and historical power consumption analysis across different building zones 
-to optimize energy efficiency, lower baseline costs, and detect operational anomalies.
+Yeh web application alag-alag building zones ki real-time aur historical power consumption ko analyze karti hai, 
+taaki energy bachayi ja sake, kharcha kam ho aur koi bhi problem jaldi pakdi ja sake.
 """)
 
-# Sidebar Navigation Controls
+# Sidebar mein control options
 st.sidebar.header("Profiling Controls")
 zone = st.sidebar.selectbox(
     "Select Building Zone", 
     ["All Zones", "Floor 1: HVAC", "Floor 2: Lighting", "Server Room"]
 )
 
-# Simulated Sensor Data Generation
+# Simulated sensor data generate karne ka function
 @st.cache_data
 def load_energy_data():
     np.random.seed(42)
@@ -37,7 +38,7 @@ def load_energy_data():
 
 df = load_energy_data()
 
-# Metrics Row
+# Upar 3 columns mein main numbers/metrics dikhane ke liye
 col1, col2, col3 = st.columns(3)
 with col1:
     st.metric(label="Average Power Load", value=f"{df['Power_Consumption_kW'].mean():.1f} kW")
@@ -48,14 +49,35 @@ with col3:
 
 st.markdown("---")
 
-# Visualizations Section
-st.subheader("📈 Power Consumption Trend Analysis")
-st.line_chart(df.set_index("Timestamp")[["Power_Consumption_kW"]])
-st.caption(f"Figure: Hourly energy consumption profile for {zone}.")
+# Animated & Interactive Plotly Graph wala section
+st.subheader("📈 Interactive Power Consumption Trend Analysis")
 
+# Plotly ka use karke ek smooth aur animated line chart bana rahe hain
+fig = px.line(
+    df, 
+    x="Timestamp", 
+    y="Power_Consumption_kW", 
+    title=f"Hourly Energy Trend ({zone})",
+    labels={"Power_Consumption_kW": "Power Load (kW)", "Timestamp": "Timeline"}
+)
+
+# Graph ko thoda aur sleek aur modern look dene ke liye styling
+fig.update_traces(line=dict(color="#0066cc", width=2))
+fig.update_layout(
+    xaxis_title="Timeline",
+    yaxis_title="Power Consumption (kW)",
+    hovermode="x unified",
+    template="plotly_white"
+)
+
+# Streamlit par graph show karna
+st.plotly_chart(fig, use_container_width=True)
+st.caption(f"Figure: Selected zone ({zone}) ke liye interactive aur animated energy consumption trend.")
+
+# Efficiency badhane ke liye tips aur recommendations
 st.subheader("💡 Efficiency & Optimization Recommendations")
 st.markdown("""
-* **Load Shifting:** Shift heavy HVAC operations to off-peak hours to reduce baseline demand charges.
-* **Automated Shut-downs:** Implement occupancy-based sensor cut-offs for lighting on Floor 2 during low-traffic windows.
-* **Thermal Regulation:** Maintain server room cooling thresholds dynamically based on ambient external temperature metrics.
+* **Load Shifting:** Bhaari HVAC systems ko un ghanto mein chalayein jab bijli ka load kam hota hai taaki kharcha bache.
+* **Automated Shut-downs:** Floor 2 par jahan log kam hote hain, wahan lightings ke liye occupancy sensors lagayein jo apne aap band ho jayein.
+* **Thermal Regulation:** Server room ka temperature bahar ke mausam ke hisaab se dynamically control karein.
 """)
