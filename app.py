@@ -88,7 +88,8 @@ st.sidebar.info("💡 Tip: Left sidebar se zones aur filters change karke live g
 @st.cache_data
 def generate_realistic_energy_data():
     np.random.seed(42)
-    timestamps = pd.date_range(start="2026-01-01", end="2026-07-01", freq="1H")
+    # Fixed frequency string from "1H" to "h" to resolve pandas compatibility error
+    timestamps = pd.date_range(start="2026-01-01", end="2026-07-01", freq="h")
     n_hours = len(timestamps)
     
     data = pd.DataFrame({
@@ -192,7 +193,8 @@ def forecast_power_simple(df, periods=72, column="Power_Consumption_kW"):
     trend = (recent_data[-1] - recent_data[0]) / len(recent_data) if len(recent_data) > 0 else 0
     
     last_timestamp = df["Timestamp"].iloc[-1]
-    forecast_timestamps = pd.date_range(start=last_timestamp, periods=periods+1, freq='H')[1:]
+    # Fixed frequency string here as well from "H" to "h" for safety
+    forecast_timestamps = pd.date_range(start=last_timestamp, periods=periods+1, freq='h')[1:]
     forecast_values = recent_data[-1] + trend * np.arange(1, periods+1)
     forecast_values = np.maximum(forecast_values, df[column].min())
     
