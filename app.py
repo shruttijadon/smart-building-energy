@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# App Title & Overview
+# App Title & Overview 
 st.title("⚡ Smart Building Energy Profiling & Analytics")
 st.markdown("""
 This web application provides real-time and historical power consumption analysis across different building zones 
