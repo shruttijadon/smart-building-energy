@@ -27,7 +27,7 @@ zone = st.sidebar.selectbox(
 @st.cache_data
 def load_energy_data():
     np.random.seed(42)
-    timestamps = pd.date_range(start="2026-01-01", end="2026-07-01", freq="H")
+    timestamps = pd.date_range(start="2026-01-01", end="2026-07-01", period=4344)
     data = pd.DataFrame({
         "Timestamp": timestamps,
         "Power_Consumption_kW": np.random.normal(120, 15, size=len(timestamps)) + np.sin(np.linspace(0, 50, len(timestamps))) * 30,
