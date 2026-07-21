@@ -4,19 +4,16 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from scipy import stats
 import warnings
 warnings.filterwarnings('ignore')
 
-
 st.set_page_config(
-    page_title="Advanced Smart Building Energy Analytics",
+    page_title="Smart Building Energy Dashboard",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS styling
 st.markdown("""
 <style>
     .metric-card {
@@ -27,9 +24,9 @@ st.markdown("""
     }
     .header-style {
         color: #0066cc;
-        font-size: 28px;
+        font-size: 26px;
         font-weight: bold;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
     .warning-box {
         background-color: #fff3cd;
@@ -48,56 +45,52 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
-st.title("⚡ Advanced Smart Building Energy Analytics & Optimization")
+st.title("⚡ Smart Building Energy Analytics & Optimization Project")
 st.markdown("""
-**Comprehensive energy management platform** - Real-time monitoring, predictive analytics, 
-anomaly detection, aur cost optimization ke liye. Aapke building ke har zone ka detailed analysis!
+**B.Tech Minor Project Dashboard** - Yeh platform building ke alag-alag zones ka power consumption 
+track karne, anomalies detect karne, aur energy costs optimize karne ke liye banaya hai! 🚀
 """)
-
 
 st.sidebar.header("🎛️ Control Panel")
 st.sidebar.markdown("---")
 
-# Zone selection
-zones_list = ["All Zones", "Floor 1: HVAC System", "Floor 2: Lighting", "Floor 3: Offices", "Server Room", "Basement: Backup Systems"]
-selected_zone = st.sidebar.selectbox("Select Building Zone", zones_list)
+zones_list = [
+    "All Zones", 
+    "Floor 1: HVAC System", 
+    "Floor 2: Lighting", 
+    "Floor 3: Offices", 
+    "Server Room", 
+    "Basement: Backup Systems"
+]
+selected_zone = st.sidebar.selectbox("Building Zone Select Karo", zones_list)
 
-# Date range filter
-st.sidebar.markdown("**📅 Time Range Selection**")
+st.sidebar.markdown("**📅 Date Range**")
 date_range = st.sidebar.date_input(
-    "Select date range",
+    "Select range",
     value=(datetime(2026, 1, 1), datetime(2026, 7, 1)),
     min_value=datetime(2026, 1, 1),
     max_value=datetime(2026, 7, 1)
 )
 
-# Aggregation level
 aggregation_type = st.sidebar.radio(
-    "Data Aggregation Level",
+    "Data View Level",
     ["Hourly", "Daily", "Weekly", "Monthly"]
 )
 
-# Advanced filters
-st.sidebar.markdown("**🔍 Advanced Filters**")
-show_anomalies = st.sidebar.checkbox("Anomaly Detection Enable karein", value=True)
-show_forecast = st.sidebar.checkbox("Predictive Forecast Dikhayein", value=True)
-cost_per_kwh = st.sidebar.number_input("Cost per kWh (₹)", value=8.5, min_value=0.0, step=0.5)
+st.sidebar.markdown("**🔍 Analysis Options**")
+show_anomalies = st.sidebar.checkbox("Show Anomalies (Spikes)", value=True)
+show_forecast = st.sidebar.checkbox("Show 72h Forecast", value=True)
+cost_per_kwh = st.sidebar.number_input("Electricity Rate (₹ per kWh)", value=8.5, min_value=0.0, step=0.5)
 
 st.sidebar.markdown("---")
-st.sidebar.info("💡 Tip: Advanced analytics se energy wastage identify karein aur costs reduce karein!")
-
+st.sidebar.info("💡 Tip: Left sidebar se zones aur filters change karke live graph update hote hue dekho!")
 
 @st.cache_data
 def generate_realistic_energy_data():
-    """Realistic energy consumption data for different zones"""
     np.random.seed(42)
     timestamps = pd.date_range(start="2026-01-01", end="2026-07-01", freq="1H")
-    
-    # Base data
     n_hours = len(timestamps)
     
-    # Different consumption patterns for each zone
     data = pd.DataFrame({
         "Timestamp": timestamps,
         "Hour": timestamps.hour,
@@ -105,7 +98,6 @@ def generate_realistic_energy_data():
         "Month": timestamps.month
     })
     
-    # Floor 1: HVAC (sine wave pattern - peak during morning/evening)
     hvac_base = 150 + 40 * np.sin(np.linspace(0, 50, n_hours))
     hvac_noise = np.random.normal(0, 8, n_hours)
     hvac_pattern = np.where(
@@ -114,45 +106,36 @@ def generate_realistic_energy_data():
         hvac_base * 0.8 + hvac_noise
     )
     
-    # Floor 2: Lighting (peak during business hours)
     lighting_pattern = np.where(
         data["Hour"].isin(range(8, 18)),
         np.random.normal(80, 10, n_hours),
         np.random.normal(20, 5, n_hours)
     )
     
-    # Floor 3: Offices (variable, peaks during business hours)
     office_pattern = np.where(
         data["Hour"].isin(range(8, 18)),
         np.random.normal(120, 15, n_hours),
         np.random.normal(40, 8, n_hours)
     )
     
-    # Server Room (constant high load)
     server_pattern = np.random.normal(200, 20, n_hours)
     
-    # Basement: Backup Systems (very low, spike during testing)
     basement_pattern = np.random.normal(15, 3, n_hours)
-    basement_pattern[::504] *= 5  # Weekly spike
+    basement_pattern[::504] *= 5
     
-    # Add data to dataframe
     data["HVAC"] = np.maximum(hvac_pattern, 50)
     data["Lighting"] = np.maximum(lighting_pattern, 10)
     data["Offices"] = np.maximum(office_pattern, 20)
     data["Server_Room"] = np.maximum(server_pattern, 100)
     data["Backup_Systems"] = np.maximum(basement_pattern, 5)
     
-    # Add temperature correlation
     data["Temperature_C"] = 20 + 8 * np.sin(np.linspace(0, 50, n_hours)) + np.random.normal(0, 1, n_hours)
     
     return data
 
-# Load data
 df_full = generate_realistic_energy_data()
 
-
 def filter_and_aggregate_data(df, start_date, end_date, agg_type):
-    """Filter data by date range and aggregate"""
     df_filtered = df[(df["Timestamp"].dt.date >= start_date) & 
                      (df["Timestamp"].dt.date <= end_date)].copy()
     
@@ -167,12 +150,9 @@ def filter_and_aggregate_data(df, start_date, end_date, agg_type):
     
     return df_filtered
 
-# Apply filters
 df = filter_and_aggregate_data(df_full, date_range[0], date_range[1], aggregation_type)
 
-# Get selected zone data
 def get_zone_data(df, zone_name):
-    """Extract specific zone consumption"""
     zone_mapping = {
         "Floor 1: HVAC System": "HVAC",
         "Floor 2: Lighting": "Lighting",
@@ -190,33 +170,27 @@ def get_zone_data(df, zone_name):
 
 df = get_zone_data(df, selected_zone)
 
-
-def detect_anomalies(data, column="Power_Consumption_kW", threshold=2):
-    """Detect anomalies using Z-score"""
-    z_scores = np.abs(stats.zscore(data[column].dropna()))
-    anomaly_mask = z_scores > threshold
+def detect_anomalies_simple(data, column="Power_Consumption_kW", threshold_multiplier=2.5):
+    mean_val = data[column].mean()
+    std_val = data[column].std()
+    
+    upper_threshold = mean_val + (threshold_multiplier * std_val)
+    lower_threshold = mean_val - (threshold_multiplier * std_val)
     
     anomalies = data[column].copy()
-    anomalies[~data[column].index.isin(data[column][anomaly_mask].index)] = np.nan
+    normal_mask = (anomalies > lower_threshold) & (anomalies < upper_threshold)
+    anomalies[normal_mask] = np.nan
     
-    return anomalies
+    return anomalies, upper_threshold, lower_threshold
 
-# ============================================================================
-# FORECASTING FUNCTION
-# ============================================================================
-def forecast_power(df, periods=72, column="Power_Consumption_kW"):
-    """Simple exponential smoothing forecast"""
-    from scipy.ndimage import uniform_filter1d
-    
-    # Moving average for smoothing
+def forecast_power_simple(df, periods=72, column="Power_Consumption_kW"):
     window = 24
-    smoothed = uniform_filter1d(df[column].values, size=window, mode='nearest')
+    data_array = df[column].values
+    smoothed = np.convolve(data_array, np.ones(window)/window, mode='valid')
     
-    # Simple trend calculation
-    recent_data = smoothed[-48:]
-    trend = (recent_data[-1] - recent_data[0]) / len(recent_data)
+    recent_data = smoothed[-48:] if len(smoothed) >= 48 else smoothed
+    trend = (recent_data[-1] - recent_data[0]) / len(recent_data) if len(recent_data) > 0 else 0
     
-    # Generate forecast
     last_timestamp = df["Timestamp"].iloc[-1]
     forecast_timestamps = pd.date_range(start=last_timestamp, periods=periods+1, freq='H')[1:]
     forecast_values = recent_data[-1] + trend * np.arange(1, periods+1)
@@ -231,11 +205,9 @@ def forecast_power(df, periods=72, column="Power_Consumption_kW"):
     
     return forecast_df
 
-
 st.markdown("---")
-st.markdown("<div class='header-style'>📊 Key Performance Metrics</div>", unsafe_allow_html=True)
+st.markdown("<div class='header-style'>📊 Quick Performance Overview</div>", unsafe_allow_html=True)
 
-# Calculate metrics
 avg_consumption = df["Power_Consumption_kW"].mean()
 peak_consumption = df["Power_Consumption_kW"].max()
 min_consumption = df["Power_Consumption_kW"].min()
@@ -243,195 +215,151 @@ total_energy_kwh = df["Power_Consumption_kW"].sum() * (1 if aggregation_type == 
 estimated_cost = total_energy_kwh * cost_per_kwh
 energy_std_dev = df["Power_Consumption_kW"].std()
 
-# Display metrics in 4 columns
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric(
-        label="Average Load",
-        value=f"{avg_consumption:.2f} kW",
-        delta=f"Std Dev: ±{energy_std_dev:.2f}"
-    )
-
+    st.metric(label="Average Load", value=f"{avg_consumption:.2f} kW", delta=f"±{energy_std_dev:.2f} std")
 with col2:
-    st.metric(
-        label="Peak Load",
-        value=f"{peak_consumption:.2f} kW",
-        delta=f"Min: {min_consumption:.2f} kW"
-    )
-
+    st.metric(label="Peak Load", value=f"{peak_consumption:.2f} kW", delta=f"Min: {min_consumption:.2f} kW")
 with col3:
-    st.metric(
-        label="Total Energy Used",
-        value=f"{total_energy_kwh:.0f} kWh",
-        delta=f"Period: {aggregation_type}"
-    )
-
+    st.metric(label="Total Energy Used", value=f"{total_energy_kwh:.0f} kWh", delta=f"{aggregation_type} View")
 with col4:
-    st.metric(
-        label="Estimated Cost",
-        value=f"₹{estimated_cost:,.0f}",
-        delta=f"@ ₹{cost_per_kwh}/kWh"
-    )
+    st.metric(label="Estimated Bill", value=f"₹{estimated_cost:,.0f}", delta=f"@ ₹{cost_per_kwh}/kWh")
 
-
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-    ["📈 Trend Analysis", "🔍 Anomalies", "🎯 Forecast", "📊 Distribution", "🔗 Correlation", "💰 Cost Analysis"]
-)
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📈 Trend Analysis", 
+    "🔍 Anomalies", 
+    "🎯 Forecast", 
+    "📊 Distribution", 
+    "🔗 Temperature Impact", 
+    "💰 Cost Breakdown"
+])
 
 with tab1:
-    st.subheader("Interactive Power Consumption Trend")
+    st.subheader("Power Consumption Line Chart")
     
-    # Main line chart with zone data
     fig_trend = go.Figure()
     
-    # Add actual consumption line
     fig_trend.add_trace(go.Scatter(
         x=df["Timestamp"],
         y=df["Power_Consumption_kW"],
         mode='lines',
-        name='Actual Consumption',
+        name='Actual Power',
         line=dict(color='#0066cc', width=2),
         hovertemplate='<b>Time:</b> %{x|%Y-%m-%d %H:%M}<br><b>Power:</b> %{y:.2f} kW<extra></extra>'
     ))
     
-    # Add moving average
     df["MA_24h"] = df["Power_Consumption_kW"].rolling(window=24, min_periods=1).mean()
     fig_trend.add_trace(go.Scatter(
         x=df["Timestamp"],
         y=df["MA_24h"],
         mode='lines',
-        name='24-Hour Moving Avg',
+        name='24h Moving Average',
         line=dict(color='#ff6b6b', width=2, dash='dash'),
         hovertemplate='<b>Time:</b> %{x|%Y-%m-%d %H:%M}<br><b>MA:</b> %{y:.2f} kW<extra></extra>'
     ))
     
     fig_trend.update_layout(
-        title=f"Energy Consumption Trend - {selected_zone} ({aggregation_type} Data)",
+        title=f"Consumption Trend for {selected_zone}",
         xaxis_title="Timeline",
-        yaxis_title="Power Consumption (kW)",
+        yaxis_title="Power (kW)",
         hovermode="x unified",
         template="plotly_white",
-        height=500,
-        legend=dict(x=0.01, y=0.99, bgcolor="rgba(255, 255, 255, 0.8)")
+        height=450
     )
     
     st.plotly_chart(fig_trend, use_container_width=True)
     
-    # Statistics box
-    col_stat1, col_stat2 = st.columns(2)
-    with col_stat1:
-        st.info(f"**Peak Time:** {df.loc[df['Power_Consumption_kW'].idxmax(), 'Timestamp'].strftime('%Y-%m-%d %H:%M')}")
-    with col_stat2:
-        st.info(f"**Low Time:** {df.loc[df['Power_Consumption_kW'].idxmin(), 'Timestamp'].strftime('%Y-%m-%d %H:%M')}")
-
+    c1, c2 = st.columns(2)
+    with c1:
+        st.info(f"⚡ Max Load Recorded At: {df.loc[df['Power_Consumption_kW'].idxmax(), 'Timestamp'].strftime('%Y-%m-%d %H:%M')}")
+    with c2:
+        st.info(f"💤 Min Load Recorded At: {df.loc[df['Power_Consumption_kW'].idxmin(), 'Timestamp'].strftime('%Y-%m-%d %H:%M')}")
 
 with tab2:
-    st.subheader("🔍 Anomaly Detection & Alert System")
+    st.subheader("Sudden Power Spikes & Anomalies")
     
     if show_anomalies:
-        # Detect anomalies
-        anomalies = detect_anomalies(df, threshold=2)
+        anomalies, upper_thresh, lower_thresh = detect_anomalies_simple(df, threshold_multiplier=2.5)
         anomaly_count = anomalies.notna().sum()
         
-        # Display anomaly chart
         fig_anomaly = go.Figure()
         
         fig_anomaly.add_trace(go.Scatter(
             x=df["Timestamp"],
             y=df["Power_Consumption_kW"],
             mode='lines',
-            name='Normal Consumption',
-            line=dict(color='#0066cc', width=2),
-            hovertemplate='<b>Time:</b> %{x|%Y-%m-%d %H:%M}<br><b>Power:</b> %{y:.2f} kW<extra></extra>'
+            name='Normal Range',
+            line=dict(color='#0066cc', width=1.5)
         ))
+        
+        fig_anomaly.add_hline(y=upper_thresh, line_dash="dash", line_color="orange", annotation_text="Upper Limit")
         
         fig_anomaly.add_trace(go.Scatter(
             x=df["Timestamp"],
             y=anomalies,
             mode='markers',
-            name='Anomaly Detected',
-            marker=dict(size=10, color='red', symbol='diamond'),
-            hovertemplate='<b>Anomaly at:</b> %{x|%Y-%m-%d %H:%M}<br><b>Power:</b> %{y:.2f} kW<extra></extra>'
+            name='Anomaly Found',
+            marker=dict(size=9, color='red', symbol='diamond')
         ))
         
         fig_anomaly.update_layout(
-            title="Anomaly Detection in Power Consumption",
+            title="Statistical Outlier Detection (2.5 Std Dev)",
             xaxis_title="Timeline",
             yaxis_title="Power (kW)",
-            hovermode="x unified",
             template="plotly_white",
-            height=500
+            height=450
         )
         
         st.plotly_chart(fig_anomaly, use_container_width=True)
         
-        # Anomaly summary
         if anomaly_count > 0:
             st.markdown(f"""
             <div class='warning-box'>
-            <strong>⚠️ {anomaly_count} Anomalies Detected!</strong><br>
-            Ye unusual power spikes ho sakte hain jo investigation karte hain. 
-            Check karein ki kya equipment malfunction ya unexpected load surge hua hai.
+            <strong>⚠️ Total {anomaly_count} potential anomalies detect hue hain!</strong><br>
+            Ye spikes kisi equipment failure ya sudden heavy load ki taraf ishara kar sakte hain.
             </div>
             """, unsafe_allow_html=True)
             
-            # Show anomaly details
-            anomaly_times = df[anomalies.notna()][["Timestamp", "Power_Consumption_kW"]]
-            if len(anomaly_times) > 0:
-                st.write("**Anomaly Details:**")
-                st.dataframe(
-                    anomaly_times.rename(columns={"Power_Consumption_kW": "Power (kW)"}),
-                    use_container_width=True,
-                    hide_index=True
-                )
+            anomaly_df = df[anomalies.notna()][["Timestamp", "Power_Consumption_kW"]]
+            st.dataframe(anomaly_df.rename(columns={"Power_Consumption_kW": "Spike Power (kW)"}), use_container_width=True, hide_index=True)
         else:
             st.markdown("""
             <div class='success-box'>
-            <strong>✅ No Anomalies Detected</strong><br>
-            Power consumption normal range mein hai!
+            <strong>✅ Sab kuch normal hai!</strong><br>
+            Koi bada power anomaly nahi mila is time period mein.
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.info("Anomaly detection enable karein sidebar se")
-
+        st.info("Sidebar se 'Anomaly Detection Enable' checkbox tick karo.")
 
 with tab3:
-    st.subheader("🎯 72-Hour Power Consumption Forecast")
+    st.subheader("Next 72 Hours Power Forecast")
     
     if show_forecast:
-        # Generate forecast
-        forecast_df = forecast_power(df, periods=72)
+        forecast_df = forecast_power_simple(df, periods=72)
         
-        # Combine actual and forecast
         fig_forecast = go.Figure()
         
-        # Historical data
         fig_forecast.add_trace(go.Scatter(
-            x=df["Timestamp"][-240:],  # Last 10 days
+            x=df["Timestamp"][-240:],
             y=df["Power_Consumption_kW"][-240:],
             mode='lines',
-            name='Historical Data',
-            line=dict(color='#0066cc', width=2),
-            hovertemplate='<b>Time:</b> %{x|%Y-%m-%d %H:%M}<br><b>Power:</b> %{y:.2f} kW<extra></extra>'
+            name='Past Data',
+            line=dict(color='#0066cc', width=2)
         ))
         
-        # Forecast
         fig_forecast.add_trace(go.Scatter(
             x=forecast_df["Timestamp"],
             y=forecast_df["Forecast"],
             mode='lines',
-            name='Forecast',
-            line=dict(color='#ffc107', width=2, dash='dash'),
-            hovertemplate='<b>Time:</b> %{x|%Y-%m-%d %H:%M}<br><b>Forecast:</b> %{y:.2f} kW<extra></extra>'
+            name='Predicted Trend',
+            line=dict(color='#ffc107', width=2, dash='dash')
         ))
         
-        # Confidence bands
         fig_forecast.add_trace(go.Scatter(
             x=forecast_df["Timestamp"],
             y=forecast_df["Upper_Bound"],
-            fill=None,
-            mode='lines',
             line_color='rgba(0,0,0,0)',
             showlegend=False,
             hoverinfo='skip'
@@ -441,295 +369,188 @@ with tab3:
             x=forecast_df["Timestamp"],
             y=forecast_df["Lower_Bound"],
             fill='tonexty',
-            mode='lines',
             line_color='rgba(0,0,0,0)',
-            name='Confidence Range (±15%)',
+            name='Confidence Band',
             fillcolor='rgba(255, 193, 7, 0.2)',
             hoverinfo='skip'
         ))
         
         fig_forecast.update_layout(
-            title="72-Hour Predictive Forecast with Confidence Interval",
+            title="Short-term Exponential Smoothing Forecast",
             xaxis_title="Timeline",
             yaxis_title="Power (kW)",
-            hovermode="x unified",
             template="plotly_white",
-            height=500,
-            legend=dict(x=0.01, y=0.99, bgcolor="rgba(255, 255, 255, 0.8)")
+            height=450
         )
         
         st.plotly_chart(fig_forecast, use_container_width=True)
         
-        # Forecast summary
-        forecast_avg = forecast_df["Forecast"].mean()
-        forecast_peak = forecast_df["Forecast"].max()
-        forecast_cost = forecast_df["Forecast"].sum() * cost_per_kwh * 3  # 72 hours = 3 days
+        f_avg = forecast_df["Forecast"].mean()
+        f_peak = forecast_df["Forecast"].max()
+        f_cost = forecast_df["Forecast"].sum() * cost_per_kwh * 3
         
         col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
-            st.metric("Avg Forecast Load", f"{forecast_avg:.2f} kW")
+            st.metric("Expected Avg Load", f"{f_avg:.2f} kW")
         with col_f2:
-            st.metric("Peak Forecast", f"{forecast_peak:.2f} kW")
+            st.metric("Expected Peak Load", f"{f_peak:.2f} kW")
         with col_f3:
-            st.metric("Est. Cost (72h)", f"₹{forecast_cost:,.0f}")
+            st.metric("Projected Cost (3 Days)", f"₹{f_cost:,.0f}")
     else:
-        st.info("Forecast enable karein sidebar se")
-
+        st.info("Sidebar se 'Predictive Forecast' enable karo.")
 
 with tab4:
-    st.subheader("📊 Power Consumption Distribution")
+    st.subheader("Load Spread & Hourly Distribution")
     
-    col_dist1, col_dist2 = st.columns(2)
-    
-    with col_dist1:
-        # Histogram
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
         fig_hist = px.histogram(
-            df,
-            x="Power_Consumption_kW",
-            nbins=30,
-            title="Power Consumption Distribution",
-            labels={"Power_Consumption_kW": "Power (kW)", "count": "Frequency"},
+            df, x="Power_Consumption_kW", nbins=30,
+            title="Load Frequency Histogram",
+            labels={"Power_Consumption_kW": "Power (kW)"},
             color_discrete_sequence=["#0066cc"]
         )
         fig_hist.update_layout(height=400, template="plotly_white")
         st.plotly_chart(fig_hist, use_container_width=True)
-    
-    with col_dist2:
-        # Box plot by hour of day
+        
+    with col_d2:
         fig_box = px.box(
-            df,
-            x="Hour",
-            y="Power_Consumption_kW",
-            title="Power Variation by Hour of Day",
+            df, x="Hour", y="Power_Consumption_kW",
+            title="Hourly Variations (Boxplot)",
             labels={"Hour": "Hour of Day", "Power_Consumption_kW": "Power (kW)"},
             color_discrete_sequence=["#ff6b6b"]
         )
         fig_box.update_layout(height=400, template="plotly_white")
         st.plotly_chart(fig_box, use_container_width=True)
 
-
 with tab5:
-    st.subheader("🔗 Energy-Temperature Correlation")
+    st.subheader("Ambient Temperature vs Energy Correlation")
     
-    col_corr1, col_corr2 = st.columns(2)
-    
-    with col_corr1:
-        # Scatter plot
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
         fig_scatter = px.scatter(
-            df,
-            x="Temperature_C",
-            y="Power_Consumption_kW",
-            title="Power vs Temperature Correlation",
-            labels={"Temperature_C": "Temperature (°C)", "Power_Consumption_kW": "Power (kW)"},
-            opacity=0.6,
-            color_discrete_sequence=["#0066cc"]
+            df, x="Temperature_C", y="Power_Consumption_kW",
+            title="Temperature vs Load Correlation",
+            labels={"Temperature_C": "Temp (°C)", "Power_Consumption_kW": "Power (kW)"},
+            opacity=0.5, color_discrete_sequence=["#0066cc"]
         )
         
-        # Add trendline
         z = np.polyfit(df["Temperature_C"].dropna(), df["Power_Consumption_kW"].dropna(), 1)
         p = np.poly1d(z)
-        x_trend = np.linspace(df["Temperature_C"].min(), df["Temperature_C"].max(), 100)
-        fig_scatter.add_trace(go.Scatter(x=x_trend, y=p(x_trend), mode='lines', name='Trend', line=dict(color='red', dash='dash')))
+        x_vals = np.linspace(df["Temperature_C"].min(), df["Temperature_C"].max(), 100)
+        fig_scatter.add_trace(go.Scatter(x=x_vals, y=p(x_vals), mode='lines', name='Fit Trend', line=dict(color='red', dash='dash')))
         
         fig_scatter.update_layout(height=400, template="plotly_white")
         st.plotly_chart(fig_scatter, use_container_width=True)
-    
-    with col_corr2:
-        # Correlation stats
-        correlation = df["Temperature_C"].corr(df["Power_Consumption_kW"])
         
+    with col_c2:
+        corr_val = df["Temperature_C"].corr(df["Power_Consumption_kW"])
         st.info(f"""
-        **Correlation Coefficient:** {correlation:.3f}
-        
-        • {abs(correlation):.1%} strength ka relationship hai
-        • {'Positive' if correlation > 0 else 'Negative'} correlation
-        • Agar temperature badhega to power {'badhega' if correlation > 0 else 'kam hoga'}
+        **Statistical Insights:**
+        - **Correlation Value:** {corr_val:.3f}
+        - Yeh batata hai ki temperature badhne par building ka energy load kitna affect hota hai (jaise AC/HVAC load).
         """)
         
-        # Daily average comparison
-        daily_stats = df.groupby(df["Timestamp"].dt.date).agg({
+        daily_avg = df.groupby(df["Timestamp"].dt.date).agg({
             "Power_Consumption_kW": "mean",
             "Temperature_C": "mean"
-        }).reset_index()
+        }).reset_index().tail(5)
         
-        st.write("**Daily Averages:**")
-        st.dataframe(
-            daily_stats.rename(columns={
-                "Timestamp": "Date",
-                "Power_Consumption_kW": "Avg Power (kW)",
-                "Temperature_C": "Avg Temp (°C)"
-            }),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.write("**Recent Days Average:**")
+        st.dataframe(daily_avg.rename(columns={"Timestamp": "Date", "Power_Consumption_kW": "Avg Power", "Temperature_C": "Avg Temp"}), use_container_width=True, hide_index=True)
 
 with tab6:
-    st.subheader("💰 Cost Analysis & Savings Opportunity")
+    st.subheader("Cost Optimization & Hourly Expenses")
     
-    col_cost1, col_cost2 = st.columns([2, 1])
+    df["Cost"] = df["Power_Consumption_kW"] * cost_per_kwh
+    hourly_cost = df.groupby(df["Timestamp"].dt.hour)["Cost"].mean().reset_index()
     
-    with col_cost1:
-        # Cost breakdown by hour
-        df["Cost"] = df["Power_Consumption_kW"] * cost_per_kwh
-        hourly_cost = df.groupby(df["Timestamp"].dt.hour)["Cost"].mean().reset_index()
-        
+    col_cc1, col_cc2 = st.columns([2, 1])
+    with col_cc1:
         fig_cost = px.bar(
-            hourly_cost,
-            x="Timestamp",
-            y="Cost",
-            title="Average Hourly Cost Distribution",
-            labels={"Timestamp": "Hour of Day", "Cost": "Avg Cost (₹)"},
-            color="Cost",
-            color_continuous_scale="RdYlGn_r"
+            hourly_cost, x="Timestamp", y="Cost",
+            title="Average Hourly Electricity Expense",
+            labels={"Timestamp": "Hour", "Cost": "Cost (₹)"},
+            color="Cost", color_continuous_scale="RdYlGn_r"
         )
         fig_cost.update_layout(height=400, template="plotly_white")
         st.plotly_chart(fig_cost, use_container_width=True)
-    
-    with col_cost2:
-        # Cost by hour ranking
-        hourly_cost_sorted = hourly_cost.sort_values("Cost", ascending=False)
-        st.write("**Most Expensive Hours:**")
-        for idx, row in hourly_cost_sorted.head(5).iterrows():
-            st.write(f"🕐 {int(row['Timestamp']):02d}:00 - ₹{row['Cost']:.2f}")
-
-st.markdown("---")
-st.markdown("<div class='header-style'>💡 AI-Powered Optimization Recommendations</div>", unsafe_allow_html=True)
-
-# Calculate savings opportunities
-peak_hours = df.groupby(df["Timestamp"].dt.hour)["Power_Consumption_kW"].mean()
-peak_hour = peak_hours.idxmax()
-low_hour = peak_hours.idxmin()
-peak_power = peak_hours.max()
-low_power = peak_hours.min()
-
-potential_savings_percent = ((peak_power - low_power) / peak_power) * 100
-potential_savings_rs = (peak_power - low_power) * 24 * 30 * cost_per_kwh
-
-recommendations = []
-
-# Recommendation 1: Load Shifting
-recommendations.append({
-    "priority": "🔴 HIGH",
-    "title": "Load Shifting Strategy",
-    "description": f"{peak_hour}:00-{peak_hour+2}:00 ke beech peak load hota hai. "
-                  f"Heavy operations ko off-peak hours ({low_hour}:00-{low_hour+2}:00) mein shift karein.",
-    "savings": f"₹{potential_savings_rs*0.3:,.0f}/month"
-})
-
-# Recommendation 2: Thermal Management
-temp_correlation = df["Temperature_C"].corr(df["Power_Consumption_kW"])
-if abs(temp_correlation) > 0.5:
-    recommendations.append({
-        "priority": "🟡 MEDIUM",
-        "title": "Thermal Regulation Upgrade",
-        "description": "HVAC system ki efficiency improve karein. Smart thermostats lagayein jo temperature ko automatically control karein.",
-        "savings": f"₹{potential_savings_rs*0.2:,.0f}/month"
-    })
-
-# Recommendation 3: Anomaly Handling
-anomaly_count = detect_anomalies(df, threshold=2).notna().sum()
-if anomaly_count > 0:
-    recommendations.append({
-        "priority": "🔴 HIGH",
-        "title": "Address Anomalies",
-        "description": f"{anomaly_count} unusual power spikes detected. Equipment inspection karein aur faults fix karein.",
-        "savings": f"₹{potential_savings_rs*0.15:,.0f}/month"
-    })
-
-# Recommendation 4: Peak Shaving
-recommendations.append({
-    "priority": "🟡 MEDIUM",
-    "title": "Peak Shaving with Battery Storage",
-    "description": "Battery energy storage system install karein jо peak hours mein load handle kare aur grid se demand reduce kare.",
-    "savings": f"₹{potential_savings_rs*0.25:,.0f}/month"
-})
-
-# Display recommendations
-for i, rec in enumerate(recommendations, 1):
-    with st.container():
-        col_rec1, col_rec2 = st.columns([0.15, 0.85])
-        with col_rec1:
-            st.markdown(f"### {rec['priority']}")
-        with col_rec2:
-            st.markdown(f"### {i}. {rec['title']}")
         
-        st.write(rec['description'])
-        st.success(f"**Potential Savings: {rec['savings']}**")
-        st.markdown("---")
-
+    with col_cc2:
+        st.write("**Top 5 Costliest Hours:**")
+        sorted_costs = hourly_cost.sort_values("Cost", ascending=False)
+        for _, row in sorted_costs.head(5).iterrows():
+            st.write(f"⏰ {int(row['Timestamp']):02d}:00 hrs ➔ ₹{row['Cost']:.2f}/hr")
 
 st.markdown("---")
-st.markdown("<div class='header-style'>📥 Data Export & Download</div>", unsafe_allow_html=True)
+st.markdown("<div class='header-style'>💡 AI & Sensor Insights / Recommendations</div>", unsafe_allow_html=True)
 
-col_exp1, col_exp2, col_exp3 = st.columns(3)
+peak_hours_mean = df.groupby(df["Timestamp"].dt.hour)["Power_Consumption_kW"].mean()
+p_hour = peak_hours_mean.idxmax()
+l_hour = peak_hours_mean.idxmin()
+p_pow = peak_hours_mean.max()
+l_pow = peak_hours_mean.min()
+est_savings = (p_pow - l_pow) * 24 * 30 * cost_per_kwh
 
-with col_exp1:
-    # Export filtered data
-    csv_data = df.to_csv(index=False)
+recs = [
+    {
+        "tag": "🔴 HIGH PRIORITY",
+        "title": "Shift Heavy Operations to Off-Peak",
+        "desc": f"Peak consumption usually {p_hour}:00 ke aas-pass hoti hai. Heavy machinery ya workloads ko off-peak hours ({l_hour}:00) mein shift karne se bill kam ho sakta hai.",
+        "save": f"Estimated Savings: ₹{est_savings*0.3:,.0f} / month"
+    },
+    {
+        "tag": "🟡 MEDIUM PRIORITY",
+        "title": "HVAC Smart Automation",
+        "desc": "Temperature aur power consumption mein high correlation hai. Building management systems (BMS) mein smart timers lagayein.",
+        "save": f"Estimated Savings: ₹{est_savings*0.2:,.0f} / month"
+    }
+]
+
+for r in recs:
+    c_r1, c_r2 = st.columns([0.2, 0.8])
+    with c_r1:
+        st.markdown(f"**{r['tag']}**")
+    with c_r2:
+        st.markdown(f"**{r['title']}**")
+    st.write(r['desc'])
+    st.success(r['save'])
+    st.markdown("---")
+
+st.markdown("<div class='header-style'>📥 Export Clean Dataset & Reports</div>", unsafe_allow_html=True)
+ex1, ex2, ex3 = st.columns(3)
+
+with ex1:
     st.download_button(
-        label="📊 Download Filtered Data (CSV)",
-        data=csv_data,
-        file_name=f"energy_data_{selected_zone}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        label="Download Filtered CSV",
+        data=df.to_csv(index=False),
+        file_name="smart_building_data.csv",
         mime="text/csv"
     )
 
-with col_exp2:
-    # Export forecast
+with ex2:
     if show_forecast:
-        forecast_df_temp = forecast_power(df, periods=72)
-        csv_forecast = forecast_df_temp.to_csv(index=False)
+        fc_csv = forecast_power_simple(df, 72).to_csv(index=False)
         st.download_button(
-            label="📈 Download Forecast (CSV)",
-            data=csv_forecast,
-            file_name=f"forecast_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            label="Download 72h Forecast CSV",
+            data=fc_csv,
+            file_name="energy_forecast.csv",
             mime="text/csv"
         )
 
-with col_exp3:
-    # Export summary report
-    summary_text = f"""
-SMART BUILDING ENERGY REPORT
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-ZONE: {selected_zone}
-PERIOD: {date_range[0]} to {date_range[1]}
-AGGREGATION: {aggregation_type}
-
-=== KEY METRICS ===
-Average Consumption: {avg_consumption:.2f} kW
-Peak Consumption: {peak_consumption:.2f} kW
-Minimum Consumption: {min_consumption:.2f} kW
-Total Energy Used: {total_energy_kwh:.0f} kWh
-Estimated Cost: ₹{estimated_cost:,.0f}
-
-=== ANOMALIES ===
-Anomalies Detected: {detect_anomalies(df, threshold=2).notna().sum()}
-
-=== FORECAST ===
-72-Hour Average Forecast: {forecast_power(df, periods=72)['Forecast'].mean():.2f} kW
-
-=== TEMPERATURE ===
-Avg Temperature: {df['Temperature_C'].mean():.2f}°C
-Correlation with Power: {df['Temperature_C'].corr(df['Power_Consumption_kW']):.3f}
-
-=== RECOMMENDATIONS ===
-"""
-    for rec in recommendations[:3]:
-        summary_text += f"\n{rec['title']}: {rec['savings']}"
-    
+with ex3:
+    report_summary = f"Smart Building Report - Zone: {selected_zone}\nAvg Load: {avg_consumption:.2f}kW\nTotal Energy: {total_energy_kwh:.0f}kWh"
     st.download_button(
-        label="📄 Download Summary Report",
-        data=summary_text,
-        file_name=f"energy_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        label="Download Text Report",
+        data=report_summary,
+        file_name="energy_report.txt",
         mime="text/plain"
     )
 
-
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #666; margin-top: 30px;'>
-    <p>⚡ <strong>Smart Building Energy Analytics System v2.0</strong></p>
-    <p>Real-time monitoring • Predictive Analytics • Cost Optimization</p>
-    <p style='font-size: 12px;'>Data updated every hour | Next update: {}</p>
+<div style='text-align: center; color: #666;'>
+    <p>⚡ <strong>Smart Building Energy Analytics Dashboard</strong> • Built with Streamlit & Plotly</p>
+    <p>B.Tech Minor Project Work</p>
 </div>
-""".format((datetime.now() + timedelta(hours=1)).strftime('%H:%M:%S')), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
