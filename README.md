@@ -50,7 +50,7 @@ Modern commercial and institutional buildings face extreme challenges with energ
 
 ## 🚀 Installation & Running Locally
 
-1. **Repository Clone Karein:**
+1. **Repository Clone :**
    ```bash
    git clone [https://github.com/shruttijadon/smart-building-energy.git](https://github.com/shruttijadon/smart-building-energy.git)
    cd smart-building-energy
