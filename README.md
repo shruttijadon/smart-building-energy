@@ -30,7 +30,7 @@ Key Features
 
  Installation & Running Locally
 
-Apne local machine par is project ko run karne ke liye in steps ko follow karein:
+
 
 1. **Repository Clone Karein:**
    ```bash
